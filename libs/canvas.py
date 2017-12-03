@@ -568,46 +568,64 @@ class Canvas(QWidget):
             self.update()
         elif key == Qt.Key_Return and self.canCloseShape():
             self.finalise()
-        elif key == Qt.Key_Left and self.selectedShape:
+
+        # *
+        # * dhzs 2017-12-2 add function: move all shapes
+        # *
+       
+        elif key == Qt.Key_Left:
             self.moveOnePixel('Left')
-        elif key == Qt.Key_Right and self.selectedShape:
+        elif key == Qt.Key_Right:
             self.moveOnePixel('Right')
-        elif key == Qt.Key_Up and self.selectedShape:
+        elif key == Qt.Key_Up:
             self.moveOnePixel('Up')
-        elif key == Qt.Key_Down and self.selectedShape:
+        elif key == Qt.Key_Down:
             self.moveOnePixel('Down')
 
     def moveOnePixel(self, direction):
+        # *
+        # * dhzs 2017-12-2 add function: move all shapes
+        # *
+
         # print(self.selectedShape.points)
-        if direction == 'Left' and not self.moveOutOfBound(QPointF(-1.0, 0)):
-            # print("move Left one pixel")
-            self.selectedShape.points[0] += QPointF(-1.0, 0)
-            self.selectedShape.points[1] += QPointF(-1.0, 0)
-            self.selectedShape.points[2] += QPointF(-1.0, 0)
-            self.selectedShape.points[3] += QPointF(-1.0, 0)
-        elif direction == 'Right' and not self.moveOutOfBound(QPointF(1.0, 0)):
-            # print("move Right one pixel")
-            self.selectedShape.points[0] += QPointF(1.0, 0)
-            self.selectedShape.points[1] += QPointF(1.0, 0)
-            self.selectedShape.points[2] += QPointF(1.0, 0)
-            self.selectedShape.points[3] += QPointF(1.0, 0)
-        elif direction == 'Up' and not self.moveOutOfBound(QPointF(0, -1.0)):
-            # print("move Up one pixel")
-            self.selectedShape.points[0] += QPointF(0, -1.0)
-            self.selectedShape.points[1] += QPointF(0, -1.0)
-            self.selectedShape.points[2] += QPointF(0, -1.0)
-            self.selectedShape.points[3] += QPointF(0, -1.0)
-        elif direction == 'Down' and not self.moveOutOfBound(QPointF(0, 1.0)):
-            # print("move Down one pixel")
-            self.selectedShape.points[0] += QPointF(0, 1.0)
-            self.selectedShape.points[1] += QPointF(0, 1.0)
-            self.selectedShape.points[2] += QPointF(0, 1.0)
-            self.selectedShape.points[3] += QPointF(0, 1.0)
+        if self.selectedShape:
+            shape_list = [self.selectedShape]
+        else:
+            shape_list = self.shapes
+        for shape in shape_list:
+            if direction == 'Left' and not self.moveOutOfBound(QPointF(-1.0, 0), shape):
+                # print("move Left one pixel")
+                shape.points[0] += QPointF(-1.0, 0)
+                shape.points[1] += QPointF(-1.0, 0)
+                shape.points[2] += QPointF(-1.0, 0)
+                shape.points[3] += QPointF(-1.0, 0)
+            elif direction == 'Right' and not self.moveOutOfBound(QPointF(1.0, 0), shape):
+                # print("move Right one pixel")
+                shape.points[0] += QPointF(1.0, 0)
+                shape.points[1] += QPointF(1.0, 0)
+                shape.points[2] += QPointF(1.0, 0)
+                shape.points[3] += QPointF(1.0, 0)
+            elif direction == 'Up' and not self.moveOutOfBound(QPointF(0, -1.0), shape):
+                # print("move Up one pixel")
+                shape.points[0] += QPointF(0, -1.0)
+                shape.points[1] += QPointF(0, -1.0)
+                shape.points[2] += QPointF(0, -1.0)
+                shape.points[3] += QPointF(0, -1.0)
+            elif direction == 'Down' and not self.moveOutOfBound(QPointF(0, 1.0), shape):
+                # print("move Down one pixel")
+                shape.points[0] += QPointF(0, 1.0)
+                shape.points[1] += QPointF(0, 1.0)
+                shape.points[2] += QPointF(0, 1.0)
+                shape.points[3] += QPointF(0, 1.0)
+
         self.shapeMoved.emit()
         self.repaint()
 
-    def moveOutOfBound(self, step):
-        points = [p1+p2 for p1, p2 in zip(self.selectedShape.points, [step]*4)]
+    # *
+    # * dhzs 2017-12-2 add a parameter
+    # *
+    def moveOutOfBound(self, step, shape=None):
+        points = [p1+p2 for p1, p2 in zip(self.selectedShape.points if shape is None else shape, [step]*4)]
         return True in map(self.outOfPixmap, points)
 
     def setLastLabel(self, text, line_color  = None, fill_color = None):

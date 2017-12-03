@@ -53,6 +53,21 @@ def util_qt_strlistclass():
     return QStringList if have_qstring() else list
 
 
+# *
+# * dhzs 2017-12-2 自定义比较函数
+# *
+def file_name_cmp(x, y):
+    diff = len(x) - len(y)
+    if diff == 0:
+        if x < y:
+            return -1
+        elif x == y:
+            return 0
+        else:
+            return 1
+    return diff
+
+
 class WindowMixin(object):
 
     def menu(self, title, actions=None):
@@ -140,6 +155,16 @@ class MainWindow(QMainWindow, WindowMixin):
         self.diffcButton.stateChanged.connect(self.btnstate)
         self.editButton = QToolButton()
         self.editButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+
+
+        # *
+        # * dhzs 2017-12-2 add copy button
+        # *
+        self.copy_prev_button = QPushButton('复制上图')
+        self.copy_prev_button.setShortcut('c')
+        self.copy_prev_button.clicked.connect(self.copy_prev)
+        listLayout.addWidget(self.copy_prev_button)
+
 
         # Add some of widgets to listLayout
         listLayout.addWidget(self.editButton)
@@ -456,6 +481,53 @@ class MainWindow(QMainWindow, WindowMixin):
         self.populateModeActions()
 
     ## Support Functions ##
+
+
+    # *
+    # * dhzs 2017-12-2 copy button fucntion
+    # *
+    def copy_prev(self):
+        if not self.noShapes():
+            self.status('已有标记区域')
+            return
+
+        if len(self.mImgList) <= 0:
+            self.status('请选择图片目录')
+            return
+
+        if self.filePath is None:
+            self.status('请选择图片目录')
+            return
+
+        currIndex = self.mImgList.index(self.filePath)
+        if currIndex - 1 < 0:
+            self.status('前面没有图片了')
+            return
+
+        filename = self.mImgList[currIndex - 1]
+        if not filename:
+            self.status('no filename')
+            return
+        
+        filename = ustr(filename)
+        if not (filename and os.path.exists(filename)):
+            self.status('no filename')
+            return
+
+        # Label xml file and show bound box according to its filename
+        if not (self.usingPascalVocFormat is True and self.defaultSaveDir is not None):
+            self.status('no default save dir')
+            return
+        
+        basename = os.path.basename(os.path.splitext(filename)[0]) + XML_EXT
+        xmlPath = os.path.join(self.defaultSaveDir, basename)
+        self.loadPascalXMLByFilename(xmlPath)
+
+        self.canvas.setFocus(True)
+
+        self.status('复制上图标签成功')
+
+
 
     def noShapes(self):
         return not self.itemsToShapes
@@ -1027,7 +1099,10 @@ class MainWindow(QMainWindow, WindowMixin):
             self.loadFile(filename)
 
     def scanAllImages(self, folderPath):
-        extensions = ['.jpeg', '.jpg', '.png', '.bmp']
+        # *
+        # * dhzs 2017-12-2 add tif
+        # *
+        extensions = ['.jpeg', '.jpg', '.png', '.bmp', '.tif']
         images = []
 
         for root, dirs, files in os.walk(folderPath):
@@ -1036,7 +1111,12 @@ class MainWindow(QMainWindow, WindowMixin):
                     relativePath = os.path.join(root, file)
                     path = ustr(os.path.abspath(relativePath))
                     images.append(path)
-        images.sort(key=lambda x: x.lower())
+
+        # *
+        # * dhzs 2017-12-2 修改排序规则 文件名中如有数字，按从小到大排列
+        # images.sort(key=lambda x: x.lower())
+        from functools import cmp_to_key
+        images.sort(key=cmp_to_key(file_name_cmp))
         return images
 
     def changeSavedirDialog(self, _value=False):
