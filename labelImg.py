@@ -5,6 +5,7 @@ import os.path
 import re
 import sys
 import subprocess
+import shutil
 
 from functools import partial
 from collections import defaultdict
@@ -160,7 +161,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # *
         # * dhzs 2017-12-2 add copy button
         # *
-        self.copy_prev_button = QPushButton('复制上图')
+        self.copy_prev_button = QPushButton('copy_previous_frame_box')
         self.copy_prev_button.setShortcut('c')
         self.copy_prev_button.clicked.connect(self.copy_prev)
         listLayout.addWidget(self.copy_prev_button)
@@ -488,44 +489,69 @@ class MainWindow(QMainWindow, WindowMixin):
     # *
     def copy_prev(self):
         if not self.noShapes():
-            self.status('已有标记区域')
+            self.status('Already marked area')
             return
 
         if len(self.mImgList) <= 0:
-            self.status('请选择图片目录')
+            self.status('Select a picture directory')
             return
 
         if self.filePath is None:
-            self.status('请选择图片目录')
+            self.status('Select a picture directory')
             return
 
         currIndex = self.mImgList.index(self.filePath)
         if currIndex - 1 < 0:
-            self.status('前面没有图片了')
+            self.status('This is the first picture')
             return
 
+        # Get the previous image's file path
         filename = self.mImgList[currIndex - 1]
         if not filename:
-            self.status('no filename')
+            self.status('No filename')
             return
         
         filename = ustr(filename)
         if not (filename and os.path.exists(filename)):
-            self.status('no filename')
+            self.status('No filename')
             return
 
-        # Label xml file and show bound box according to its filename
+        # Label XML file and show bounding box according to its filename
         if not (self.usingPascalVocFormat is True and self.defaultSaveDir is not None):
-            self.status('no default save dir')
+            self.status('No default save dir')
             return
         
+        # Get the annotation file path for the previous image
         basename = os.path.basename(os.path.splitext(filename)[0]) + XML_EXT
         xmlPath = os.path.join(self.defaultSaveDir, basename)
-        self.loadPascalXMLByFilename(xmlPath)
 
-        self.canvas.setFocus(True)
+        if not os.path.exists(xmlPath):
+            self.status('No annotation file found for the previous image')
+            return
 
-        self.status('复制上图标签成功')
+        # Load the previous XML annotation file
+        annotations = self.loadPascalXMLByFilename(xmlPath)
+        if annotations is None:
+            self.status('Failed to load the annotation file')
+            return
+
+        # Modify the filename for the current image and save the annotation
+        current_basename = os.path.basename(os.path.splitext(self.filePath)[0]) + XML_EXT
+        current_xml_path = os.path.join(self.defaultSaveDir, current_basename)
+
+        # Copy the previous XML file to the current file path
+        try:
+            shutil.copy(xmlPath, current_xml_path)
+            self.status(f'Annotation file copied successfully to {current_xml_path}')
+        except Exception as e:
+            self.status(f'Failed to copy annotation file: {str(e)}')
+            return
+
+        # Optionally, modify the contents of the XML to reflect the new image (if needed)
+        # For example, you could edit the XML to update the image path inside the XML file:
+        # self.modify_xml_for_current_image(current_xml_path)
+
+        self.status('Copy successful')
 
 
 
